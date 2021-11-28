@@ -1,0 +1,87 @@
+    /* Hide & Show answers */
+    $('body').on('click', '.btn.reveal-solution', function (e) {
+        e.preventDefault();
+        $(this).parent('.question-body').find('.question-answer').fadeIn(100);
+        $(this).parent('.question-body').find('.hide-solution').removeClass('d-none');
+        $(this).parent('.question-body').find('.correct-hidden').addClass('correct-choice');
+        $(this).addClass('d-none');
+    });
+
+    $('body').on('click', '.btn.hide-solution', function (e) {
+        e.preventDefault();
+        $(this).parent('.question-body').find('.question-answer').fadeOut(100);
+        $(this).parent('.question-body').find('.reveal-solution').removeClass('d-none');
+        $(this).parent('.question-body').find('.correct-hidden').removeClass('correct-choice');
+        $(this).addClass('d-none');
+    });
+
+    function is_question_mcq(question_jquery_object){
+        return question_jquery_object.find(".multi-choice-letter").length > 0;
+    }
+
+    function set_voting_configuration_by_question(question_jquery_object) {
+        // Voted comments are only for MCQ questions, this function has nothing to do on other questions
+        if (!is_question_mcq(question_jquery_object))
+            return;
+
+        let choice_limit = question_jquery_object.find(".correct-answer").text().trim().length;
+        let choices_elements = question_jquery_object.find(".multi-choice-letter");
+
+        let choice_letters = "";
+        choices_elements.each(function() {
+            choice_letters += $(this).text().trim()[0];
+        });
+
+        let question_id = question_jquery_object.find(".question-body").addBack('.question-body').data("id");
+        let discussion_object = getDiscussionObjectByQuestionId(question_id);
+
+        set_voted_comment_config(discussion_object, choice_letters, choice_limit);
+    }
+
+    /* Open voting comment from inside a question */
+    $('body').on('click', '.vote-answer-button', function(e) {
+        e.preventDefault();
+        let question_container = $(this).closest(".question-body");
+        let question_id = question_container.data("id");
+        let discussion_object = getDiscussionObjectByQuestionId(question_id);
+        if (discussion_object.length) {
+            // This works for forum discussion page and inline discussions.
+            set_voting_configuration_by_question(question_container);
+            enable_voted_comment(discussion_object);
+            $('html, body').animate({scrollTop: discussion_object.offset().top - 150});
+        } else {
+            // This is for modal discussions.
+            resetDiscussionModal();
+            loadDiscussionIntoModal(question_id, true);
+            $('#discussion-modal').modal('show');
+        }
+    });
+
+    /* Switch to voting comment from within a discussion */
+    $('body').on('click', '.switch-to-voting-comment-btn', function(e) {
+        e.preventDefault();
+        let question_id = $(this).closest("[data-discussion-question-id]").data('discussion-question-id');
+        let question_container = $(`.question-body[data-id=${question_id}]`);
+        set_voting_configuration_by_question(question_container);
+        enable_voted_comment(getDiscussionObjectByQuestionId(question_id));
+    });
+
+    /* Switch back to simple comment from within a discussion */
+    $('body').on('click', '.switch-to-simple-comment-btn', function(e) {
+        e.preventDefault();
+        revert_to_simple_comment($(this).closest(".outer-discussion-container"));
+    });
+
+
+    function scrollToId(elementId) {
+        window.scroll(0,findPos(document.getElementById(elementId)) - 100);
+        function findPos(obj) {
+            var curtop = 0;
+            if (obj.offsetParent) {
+                do {
+                    curtop += obj.offsetTop;
+                } while (obj = obj.offsetParent);
+                return [curtop];
+            }
+        }
+    }
